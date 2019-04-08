@@ -1,0 +1,150 @@
+// https://stackoverflow.com/questions/2566685/is-there-a-way-to-split-factor-out-common-parts-of-gradle-build/2577378
+apply from: 'build-orig.gradle'
+
+android {
+    /*compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        applicationId "com.money.manager.ex"
+        versionCode 998
+        //versionName getVersionAsDate() + "." + versionCode
+        versionName "2019.03.30.998-beta"
+        // $applicationId
+        setProperty("archivesBaseName", "ammx-$versionName")
+
+        // minSdkVersion rootProject.ext.minSdkVersion
+        // targetSdkVersion rootProject.ext.targetSdkVersion
+        minSdkVersion 19 // Android 4.4
+        targetSdkVersion 28
+
+        multiDexEnabled true
+        vectorDrawables.useSupportLibrary = true
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    sourceSets {
+        // Move the build types to build-types/<type>
+        // For instance, build-types/debug/java, build-types/debug/AndroidManifest.xml, ...
+        // This moves them out of them default location under src/<type>/... which would
+        // conflict with src/ being used by the main source set.
+        // Adding new build types or product flavors should be accompanied
+        // by a similar customization.
+        debug.setRoot('build-types/debug')
+        release.setRoot('build-types/release')
+    }*/
+
+    def isRunningOnTravis = System.getenv("CI") == "true"
+
+    if (isRunningOnTravis) {
+        defaultConfig {
+            applicationId applicationId + ".travis"
+            versionName versionName + "-travis"
+            if (System.getenv("LATEST_TAG") != null) {
+                versionName System.getenv("LATEST_TAG") + "-travis"
+            }
+            setProperty("archivesBaseName", "ammx-$versionName")
+        }
+        buildTypes {
+            beta {
+                initWith debug
+            }
+        }
+        signingConfigs {
+            debug {
+                // storeFile file("debug.keystore")
+                //v2SigningEnabled false
+                storeFile = file("../keystore.jks")
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
+//    buildTypes {
+//        debug {
+//            applicationIdSuffix ".debug"
+//
+//            minifyEnabled false
+//            shrinkResources false
+//            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+//        }
+//        beta {
+//            applicationIdSuffix ".beta"
+//            versionNameSuffix "-beta"
+//
+//            minifyEnabled false
+//            shrinkResources false
+//            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+//
+//            versionNameSuffix "-beta"
+//        }
+//        release {
+//            minifyEnabled false
+//            shrinkResources false
+//            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+//
+//            versionNameSuffix "-release"
+//        }
+//    }
+
+    /* dataBinding {
+        enabled = true
+    }
+
+    productFlavors {
+        // beta {
+        //     applicationId "com.money.manager.ex.beta"
+        //     versionName "latestBeta"
+        // }
+        // stable {
+        //     applicationId "com.money.manager.ex"
+        // }
+    }
+
+    lintOptions {
+        // stop the gradle build if errors are found - affects XML resources (strings, etc.).
+        abortOnError false
+    }
+
+    packagingOptions {
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/DEPENDENCIES'
+    }
+
+    signingConfigs {
+        debug {
+            // storeFile file("debug.keystore")
+            //v2SigningEnabled false
+        }
+        release {
+            keyAlias 'ammex'
+        }
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+//        unitTests.all {
+//            systemProperty 'robolectric.offline', 'true'
+//        }
+        // http://robolectric.org/getting-started/
+        unitTests {
+            includeAndroidResources = true
+        }
+    }*/
+}
+
+//static def getVersionAsDate() {
+//    def date = new Date()
+//    def formattedDate = date.format('yyyy.MM.dd')
+//    return formattedDate
+//}
