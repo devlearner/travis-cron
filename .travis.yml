@@ -1,0 +1,170 @@
+language: android
+# https://medium.com/@harmittaa/travis-ci-android-example-357f6e632fc4
+sudo: required
+
+env:
+  global:
+    - ANDROID_API=28
+    - EMULATOR_API=21
+    - ANDROID_BUILD_TOOLS=28.0.3
+    - ADB_INSTALL_TIMEOUT=5 # minutes
+    - TRAVIS_REPO_SLUG=devlearner/android-money-manager-ex
+    #- TRAVIS_COMMIT=9a8b209eb3c04ab4904eed57fc83da590efd290d
+    - TRAVIS_BUILD_DIR=$HOME/$TRAVIS_REPO_SLUG
+    - KEY_ALIAS=$(echo $KEY_ALIAS_BASE64 | openssl base64 -A -d)
+    - KEY_PASSWORD=$(echo $KEY_PASSWORD_BASE64 | openssl base64 -A -d)
+    - KEYSTORE_PASSWORD=$(echo $KEYSTORE_PASSWORD_BASE64 | openssl base64 -A -d)
+
+android:
+  components:
+    # Uncomment the lines below if you want to
+    # use the latest revision of Android SDK Tools
+    - tools
+    - platform-tools
+    - tools
+
+    # The BuildTools version used by your project
+    - build-tools-$ANDROID_BUILD_TOOLS
+    # The SDK version used to compile your project
+    - android-$ANDROID_API
+
+    # Additional components
+    #- extra-google-google_play_services
+    - extra-google-m2repository
+    - extra-android-m2repository
+    #- addon-google_apis-google-19
+    #- add-on
+    #- extra
+
+    # Specify at least one system image,
+    # if you need to run emulator(s) during your tests
+    #- sys-img-armeabi-v7a-android-22
+    #- sys-img-armeabi-v7a-android-17
+    - sys-img-armeabi-v7a-android-25
+  
+  licenses:
+    - 'android-sdk-preview-license-.+'
+    - 'android-sdk-license-.+'
+    - 'intel-android-extra-license.+'
+    - 'android-sdk-preview-license-52d11cd2'
+    - 'google-gdk-license-.+'
+
+  # This fixes the required permissions for gradle build.
+  before_install:
+    - chmod +x gradlew
+    - yes | sdkmanager "platforms;android-27"
+
+  install:
+    # Check install section: http://docs.travis-ci.com/user/build-configuration/#install
+    # If you'd like to skip the install stage entirely, set it to true and nothing will be run.
+    #- true
+
+  #before_script:
+    # Create and start emulator
+    #- echo no | android create avd --force -n test -t android-25 --abi armeabi-v7a
+    #- emulator -avd test -no-skin -no-audio -no-window &
+    #- android-wait-for-emulator
+    #- adb shell input keyevent 82 &
+
+  branches:
+    only:
+      - master
+      - dev
+
+# https://stackoverflow.com/questions/44911547/where-to-store-android-keystore-file-for-cirlceci-build
+before_install:
+  #- export TRAVIS_REPO_SLUG=devlearner/android-money-manager-ex
+  #- export TRAVIS_COMMIT=9a8b209eb3c04ab4904eed57fc83da590efd290d
+  - cd $HOME
+  - git clone --depth=50 --branch=dev https://github.com/$TRAVIS_REPO_SLUG.git $TRAVIS_REPO_SLUG
+  - cd $TRAVIS_REPO_SLUG
+  #- export TRAVIS_COMMIT=$(git rev-list -n 1 $(git describe --abbrev=0 --tags @))
+  - export LATEST_TAG=$(git describe --tags @)
+  #- export LATEST_TAG=$(git describe --abbrev=0 --tags @)
+  - echo Latest tag is $LATEST_TAG
+  - export TRAVIS_COMMIT=$(git rev-list -n 1 $LATEST_TAG)
+  - echo Checking out commit $TRAVIS_COMMIT
+  - git checkout -qf $TRAVIS_COMMIT
+  - echo Customising app/build.gradle for Travis build
+  #- wget -q https://github.com/devlearner/travis-cron/raw/config/app/build.gradle -O app/build.gradleb
+  - mv app/build.gradle app/build-orig.gradle
+  - wget https://github.com/devlearner/travis-cron/raw/config/app/build.gradle -O app/build.gradle
+  - echo $KEYSTORE_BASE64 | openssl base64 -A -d -out keystore.jks
+  #- export COMMIT_MSG=$(git log -n 1 --format=%B -1 | sed 's/#/\\#/g' | sed 's/\//\\\//g')
+  #- export COMMIT_MSG=$(git log -n 1 --format=%B -1 | sed "s/#/<br>/g")
+  - export COMMIT_MSG=$(printf %q $(git log -n 1 --format=%B -1))
+  - echo $COMMIT_MSG
+
+script:
+  # By default Travis-ci executes './gradlew build connectedCheck' if no 'script:' section found.
+  #- ./gradlew build --stacktrace
+  - echo Done
+  # add --info or --verbose for more output
+
+# https://android.jlelse.eu/using-travisci-to-securely-build-and-deploy-a-signed-version-of-your-android-app-94afdf5cf5b4
+# https://stackoverflow.com/questions/32324483/how-to-get-second-last-commit-hash-in-git/32324557
+# https://docs.travis-ci.com/user/deployment/releases/#setting-the-tag-at-deployment-time
+# https://github.com/travis-ci/travis-ci/issues/9067
+# https://github.com/travis-ci/travis-ci/issues/8248
+# https://github.com/travis-ci/dpl/issues/155
+# https://stackoverflow.com/questions/2854655/command-to-escape-a-string-in-bash/2854668
+#before_deploy:
+  # Set up git user name and tag this commit
+  #- git config --local user.name "YOUR GIT USER NAME"
+  #- git config --local user.email "YOUR GIT USER EMAIL"
+  #- export TRAVIS_TAG=${TRAVIS_TAG:-$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)}
+  #- git tag $TRAVIS_TAG
+deploy:
+  provider: releases
+  #api_key: "GITHUB OAUTH TOKEN"
+  api_key: $GITHUB_TOKEN
+  #file: /home/travis/build/devlearner/android-money-manager-ex/app/build/outputs/apk/release/*
+  file: $TRAVIS_BUILD_DIR/app/build/outputs/apk/beta/*.apk
+  file_glob: true
+  skip_cleanup: true
+  prerelease: true
+  #tag_name: "$(git log -n 1 --skip 1 --format=%f -1)-$(date +'%Y%m%d%H%M%S')-$(git log -n 1 --skip 1 --format=%h -1)"
+  #tag_name: "$(git log -n 1 --skip 1 --format=%f -1)-$(git log -n 1 --skip 1 --format=%h -1)-travis-beta-$(date +'%Y%m%d%H%M%S')"
+  #target_commitish: $(git rev-parse @~)
+  tag_name: "$(git log -n 1 --format=%f -1)-$(git log -n 1 --format=%h -1)-travis-beta-$(date +'%Y%m%d%H%M%S')"
+  target_commitish: $(git rev-parse @)
+  draft: true
+  #name: "$(git log -n 1 --skip 1 --format=%f -1)-$(date +'%Y%m%d%H%M%S')-$(git log -n 1 --skip 1 --format=%h -1)"
+  #name: "$(git describe --tags @~)-travis-beta-$(date +'%Y%m%d%H%M%S')"
+  #body: \$'This is an unofficial Travis beta build for commit $(git log -n 1 --skip 1 --format=%h -1) at $(date +'%Y%m%d%H%M%S')
+  #  $(git log -n 1 --skip 1 --format=%B -1)'
+  name: "$(git describe --tags @)-travis-beta-$(date +'%Y%m%d%H%M%S')"
+  #body: "This is an unofficial Travis beta build for commit $(git log -n 1 --format=%h -1) as at $(date +'%Y%m%d%H%M%S')<br><pre>$(git log -n 1 --format=%B -1)</pre>"
+  # try to escape hash mark
+  #body: "This is an unofficial Travis beta build for commit $(git log -n 1 --format=%h -1) as at $(date +'%Y%m%d%H%M%S')<br><pre>${$(git log -n 1 --format=%B -1)//\#/\\#}</pre>"
+  #body: '
+  #  This is an unofficial Travis beta build for commit $(git log -n 1 --format=%h -1) as at $(date +''%Y%m%d%H%M%S'')<br>
+  #  <pre>$(git log -n 1 --format=%B -1 | sed ''s/#/\#/g'')</pre>'
+  #body: 'This is an unofficial Travis beta build for commit $(git log -n 1 --format=%h -1) as at $(date +''%Y%m%d%H%M%S'')<br>
+  #    <pre>$(printf %q "$(git log -n 1 --format=%B -1)")</pre>'
+  #body: "This is an unofficial Travis beta build for commit $(git log -n 1 --format=%h -1) as at $(date +'%Y%m%d%H%M%S')<br>
+  #    <pre>$(printf %q \"$(git log -n 1 --format=%B -1)\")</pre>"
+  #body: 'This is an unofficial Travis beta build for commit $(git log -n 1 --format=%h -1) as at $(date +''%Y%m%d%H%M%S'')
+  #      <br><pre>
+  #      $(git log -n 1 --format=%B -1)
+  #     </pre>'
+  #body: 'This is an unofficial Travis beta build for commit $(git log -n 1 --format=%h -1) as at $(date +''%Y%m%d%H%M%S'')
+  #        <br><pre>
+  #        $(git log -n 1 --format=%B -1 | sed ''s/#/\\#/g'' | sed ''s/\//\\\//g'')
+  #       </pre>'
+  #body: |
+  #  This is an unofficial Travis beta build for commit $(git log -n 1 --format=%h -1) as at $(date +'%Y%m%d%H%M%S')
+  #  <br><pre>
+  #  $COMMIT_MSG
+  #  </pre>
+  #body: "This is an unofficial Travis beta build for commit $(git log -n 1 --format=%h -1) as at $(date +'%Y%m%d%H%M%S')
+  #  <br><pre>
+  #  $COMMIT_MSG
+  #  </pre>"
+  body: $COMMIT_MSG
+  on:
+    repo: $TRAVIS_REPO_SLUG
+    all_branches: true
+    #tags: true
+      # publish only master branch? Use this condition to set-up both Beta and Release builds.
+#     branch: master
